@@ -1,5 +1,6 @@
 package com.example.pets.controller;
 
+import com.example.pets.dto.response.PetResponse;
 import com.example.pets.service.PetService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -13,9 +14,9 @@ public class PetController {
 
     private final PetService petService;
     @GetMapping({"/{id}"})
-    public ResponseEntity getPet(@PathVariable("id") Long id){
+    public ResponseEntity<PetResponse> getPet(@PathVariable("id") Long id){
         var result = this.petService.findById(id);
-        return ResponseEntity.ok(result);
+        return ResponseEntity.ok(null);
     }
 
 }

@@ -1,9 +1,11 @@
 package com.example.pets.service;
 
 import com.example.pets.dto.request.PetRequest;
+import com.example.pets.dto.response.PetResponse;
 import com.example.pets.entity.Pet;
 import com.example.pets.repository.PetRepository;
 import com.example.pets.service.mapper.RequestMapper;
+import com.example.pets.service.mapper.ResponseMapper;
 import lombok.RequiredArgsConstructor;
 import org.modelmapper.ModelMapper;
 import org.springframework.stereotype.Service;
@@ -15,9 +17,9 @@ import java.util.Objects;
 @RequiredArgsConstructor
 public class PetService {
     private final PetRepository petRepository;
-    private final ModelMapper modelMapper;
 
     private final RequestMapper<Pet, PetRequest> requestMapper;
+    private final ResponseMapper<Pet, PetResponse> responseMapper;
 
     public Pet update(PetRequest petRequest){
         Assert.notNull(petRequest, "Pet request is null");
@@ -34,7 +36,7 @@ public class PetService {
 
     public Pet findById(Long id) {
         Assert.notNull(id, "Pet's id is null");
-        return this.petRepository.findById(id).orElseThrow(()-> new RuntimeException());
+        return this.petRepository.findById(id).orElse(null);
     }
 
 

@@ -14,7 +14,7 @@ import java.util.List;
 
 public interface ClientRepository extends JpaRepository<Client, Long>, PagingAndSortingRepository<Client, Long> {
 
-    @Query("SELECT c FROM Client c JOIN FETCH c.pet JOIN FETCH c.owner o WHERE o.id = :id")
+    @Query("SELECT c FROM Client c LEFT JOIN FETCH c.pet LEFT JOIN FETCH c.owner o WHERE o.id = :id")
     List<Client> findByIdOwner(@Param("id") Long id);
 
     @Query("SELECT c FROM Client c JOIN FETCH c.pet JOIN FETCH c.owner o")

@@ -1,5 +1,6 @@
 package com.example.pets.controller;
 
+import com.example.pets.exception.EntityModifyException;
 import org.hibernate.PropertyValueException;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.http.HttpHeaders;
@@ -70,8 +71,16 @@ public class ExceptionSupervisor extends ResponseEntityExceptionHandler {
     public ResponseEntity<Object> handleNullPointerException(
             NullPointerException exp, WebRequest request){
         String exceptionValue = exp.getMessage();
-        return getExceptionResponseEntity(exp, HttpStatus.BAD_REQUEST, request, Arrays.asList(exceptionValue));
+        return getExceptionResponseEntity(exp, HttpStatus.BAD_REQUEST, request, Collections.singletonList(exceptionValue));
     }
+
+    @ExceptionHandler({EntityModifyException.class})
+    public ResponseEntity<Object> handleEntityModifyException(
+            EntityModifyException exp, WebRequest request){
+        String exceptionValue = exp.getMessage();
+        return getExceptionResponseEntity(exp, HttpStatus.BAD_REQUEST, request, Collections.singletonList(exceptionValue));
+    }
+
     private ResponseEntity<Object> getExceptionResponseEntity(Exception exception,
                                                               HttpStatus status,
                                                               WebRequest request,

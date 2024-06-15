@@ -3,12 +3,14 @@ package com.example.pets.service;
 import com.example.pets.dto.filter.ClientFilter;
 import com.example.pets.dto.filter.FilterArgument;
 import com.example.pets.dto.request.ClientRequest;
+import com.example.pets.dto.request.PetRequest;
 import com.example.pets.dto.response.ClientResponse;
 import com.example.pets.dto.response.OwnerResponse;
 import com.example.pets.dto.response.PetResponse;
 import com.example.pets.entity.Client;
 import com.example.pets.entity.Owner;
 import com.example.pets.entity.Pet;
+import com.example.pets.exception.EntityModifyException;
 import com.example.pets.repository.ClientRepository;
 import com.example.pets.service.mapper.ResponseMapper;
 import io.micrometer.common.util.StringUtils;
@@ -22,16 +24,17 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class ClientService {
+
+    public Owner pendingOwner = new Owner();
+    List<PetRequest> pendingPets = new ArrayList<>();
 
     private final ClientRepository clientRepository;
     private final OwnerService ownerService;
@@ -40,25 +43,39 @@ public class ClientService {
     private final ResponseMapper<Owner, OwnerResponse> ownerResponseMapper;
     private final ResponseMapper<Pet, PetResponse> petResponseMapper;
 
-    public ClientResponse create(ClientRequest clientRequest) {
-        Owner owner = ownerService.update(clientRequest.getOwner());
+    @Transactional
+    public List<Client> create(ClientRequest clientRequest) throws EntityModifyException {
+        if (CollectionUtils.isEmpty(clientRequest.getPets())) {
+            throw new EntityModifyException("Pets must not be empty");
+        }
         List<Client> afterSaveClientList = new ArrayList<>();
-        clientRequest.getPets().forEach((petRequest) -> {
-            Pet pet = petService.update(petRequest);
-            Client client = new Client(pet, owner);
-            if (Objects.isNull(petRequest.getId())) {
-                client = clientRepository.save(client);
-            }
-            afterSaveClientList.add(client);
+        this.updater(clientRequest);
+        pendingPets.forEach((petRequest) -> {
+            afterSaveClientList.add(clientForEveryPet(petRequest));
         });
-        ClientResponse clientResponse = new ClientResponse();
-        clientResponse.setPets(new ArrayList<>());
-        afterSaveClientList.stream().map(clientResponseMapper::toResponse).forEach((item) -> {
-            if (clientResponse.getOwner() == null)
-                clientResponse.setOwner(item.getOwner());
-            clientResponse.getPets().addAll(item.getPets());
-        });
-        return clientResponse;
+        return afterSaveClientList;
+    }
+    public void updater(ClientRequest clientRequest){
+        pendingOwner = ownerService.update(clientRequest.getOwner());
+        pendingPets = clientRequest.getPets();
+    }
+    public Client clientForEveryPet(PetRequest petRequest){
+        Pet pet = petService.update(petRequest);
+        return new Client(pet, pendingOwner);
+    }
+
+    public List<ClientResponse> toResponseList(List<Client> clients) {
+        return clients.stream()
+                .collect(Collectors.groupingBy(Client::getOwner,
+                        Collectors.mapping(Client::getPet, Collectors.toList())))
+                .entrySet()
+                .stream()
+                .map(t -> {
+                    OwnerResponse ownerResponse = ownerResponseMapper.toResponse(t.getKey());
+                    List<PetResponse> petResponseList = t.getValue().stream().map(petResponseMapper::toResponse).collect(Collectors.toList());
+                    return new ClientResponse(ownerResponse, petResponseList);
+                })
+                .collect(Collectors.toList());
     }
 
     public ClientResponse findById(Long id) throws EntityNotFoundException {
@@ -72,19 +89,8 @@ public class ClientService {
         return clientResponse;
     }
 
-    public List<ClientResponse> findAll() {
-        Map<Owner, List<Pet>> clientData = clientRepository.findAll()
-                .stream()
-                .collect(Collectors.groupingBy((t) -> t.getOwner(), Collectors.mapping(t -> t.getPet(), Collectors.toList())));
-        return clientData
-                .entrySet()
-                .stream()
-                .map(t -> {
-                    OwnerResponse ownerResponse = ownerResponseMapper.toResponse(t.getKey());
-                    List<PetResponse> petResponseList = t.getValue().stream().map(petResponseMapper::toResponse).collect(Collectors.toList());
-                    return new ClientResponse(ownerResponse, petResponseList);
-                })
-                .collect(Collectors.toList());
+    public List<Client> findAll() {
+        return clientRepository.findAll();
     }
 
     @Transactional
@@ -98,8 +104,7 @@ public class ClientService {
                 .stream()
                 .map(clientResponseMapper::toResponse)
                 .collect(Collectors.toList());
-        Page<ClientResponse> responsePage = new PageImpl<>(clientResponseList, PageRequest.of(pageClient.getNumber(), pageClient.getSize()), pageClient.getTotalElements());
-        return responsePage;
+        return new PageImpl<>(clientResponseList, PageRequest.of(pageClient.getNumber(), pageClient.getSize()), pageClient.getTotalElements());
     }
 
     public Specification<Client> clientFilter(ClientFilter clientFilter) {

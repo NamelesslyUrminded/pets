@@ -2,6 +2,7 @@ package com.example.pets.controller;
 
 import com.example.pets.dto.request.ClientRequest;
 import com.example.pets.dto.response.ClientResponse;
+import com.example.pets.exception.EntityModifyException;
 import com.example.pets.service.ClientService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -18,20 +19,17 @@ public class ClientController {
 
     private final ClientService clientService;
 
+    //mappers
+
     @PostMapping
-    public ResponseEntity<ClientResponse> create(@Valid @RequestBody ClientRequest clientRequest) {
-        return ResponseEntity.ok(clientService.create(clientRequest));
+    public ResponseEntity<List<ClientResponse>> create(@Valid @RequestBody ClientRequest clientRequest) throws EntityModifyException {
+        return ResponseEntity.ok(clientService.toResponseList(clientService.create(clientRequest)));
+
     }
 
     @GetMapping({"/{clientId}"})
-    public ResponseEntity findById(@PathVariable Long clientId) {
+    public ResponseEntity<ClientResponse> findById(@PathVariable Long clientId) {
         return ResponseEntity.ok(clientService.findById(clientId));
-    }
-
-    @DeleteMapping
-    public ResponseEntity deleteByList(@RequestBody List<Long> idList) {
-        clientService.deleteSeveral(idList);
-        return ResponseEntity.ok().build();
     }
 
 }
