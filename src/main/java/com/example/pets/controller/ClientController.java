@@ -2,6 +2,7 @@ package com.example.pets.controller;
 
 import com.example.pets.dto.request.ClientRequest;
 import com.example.pets.dto.response.ClientResponse;
+import com.example.pets.entity.Client;
 import com.example.pets.exception.EntityModifyException;
 import com.example.pets.service.ClientService;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +24,8 @@ public class ClientController {
 
     @PostMapping
     public ResponseEntity<List<ClientResponse>> create(@Valid @RequestBody ClientRequest clientRequest) throws EntityModifyException {
-        return ResponseEntity.ok(clientService.toResponseList(clientService.create(clientRequest)));
+      List<Client> clients = clientService.create(clientRequest);
+      return ResponseEntity.ok(clientService.toResponseList(clients));
 
     }
 
@@ -31,5 +33,9 @@ public class ClientController {
     public ResponseEntity<ClientResponse> findById(@PathVariable Long clientId) {
         return ResponseEntity.ok(clientService.findById(clientId));
     }
-
+    @GetMapping
+    public ResponseEntity<Object> getRandomClients(){
+      clientService.fillClients();
+      return ResponseEntity.ok().build();
+    }
 }

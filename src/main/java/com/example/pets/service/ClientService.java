@@ -4,9 +4,9 @@ import com.example.pets.dto.filter.ClientFilter;
 import com.example.pets.dto.filter.FilterArgument;
 import com.example.pets.dto.request.ClientRequest;
 import com.example.pets.dto.request.PetRequest;
-import com.example.pets.dto.response.ClientResponse;
-import com.example.pets.dto.response.OwnerResponse;
-import com.example.pets.dto.response.PetResponse;
+import com.example.pets.dto.response.*;
+import com.example.pets.dto.response.clientFillerResponse.ClientFillerResponseMain;
+import com.example.pets.dto.response.clientFillerResponse.ClientResultsResponse;
 import com.example.pets.entity.Client;
 import com.example.pets.entity.Owner;
 import com.example.pets.entity.Pet;
@@ -23,8 +23,11 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -35,6 +38,7 @@ public class ClientService {
 
     public Owner pendingOwner = new Owner();
     List<PetRequest> pendingPets = new ArrayList<>();
+
 
     private final ClientRepository clientRepository;
     private final OwnerService ownerService;
@@ -49,19 +53,16 @@ public class ClientService {
             throw new EntityModifyException("Pets must not be empty");
         }
         List<Client> afterSaveClientList = new ArrayList<>();
-        this.updater(clientRequest);
-        pendingPets.forEach((petRequest) -> {
-            afterSaveClientList.add(clientForEveryPet(petRequest));
+        Owner pendingOwner = ownerService.update(clientRequest.getOwner()); // owner edit
+        clientRequest.getPets().forEach((petRequest) -> {
+            afterSaveClientList.add(clientForEveryPet(petRequest, pendingOwner));
         });
-        return afterSaveClientList;
+        return clientRepository.saveAll(afterSaveClientList);
     }
-    public void updater(ClientRequest clientRequest){
-        pendingOwner = ownerService.update(clientRequest.getOwner());
-        pendingPets = clientRequest.getPets();
-    }
-    public Client clientForEveryPet(PetRequest petRequest){
+
+    public Client clientForEveryPet(PetRequest petRequest, Owner owner){
         Pet pet = petService.update(petRequest);
-        return new Client(pet, pendingOwner);
+        return new Client(pet, owner);
     }
 
     public List<ClientResponse> toResponseList(List<Client> clients) {
@@ -129,4 +130,19 @@ public class ClientService {
         };
     }
 
+    public void fillClients(){
+      RestTemplate restTemplate = new RestTemplate();
+      ResponseEntity<ClientResultsResponse> response = restTemplate
+        .exchange("https://randomuser.me/api/?results={results}",
+        HttpMethod.GET,
+        null,
+        ClientResultsResponse.class,
+        "100"
+      );
+      ClientResultsResponse clientResultsResponse = response.getBody();
+      if (Objects.nonNull(clientResultsResponse)) {
+        List<ClientFillerResponseMain> results = clientResultsResponse.getResults();
+        results.forEach(t -> System.out.println(t.toString()));
+      }
+    }
 }

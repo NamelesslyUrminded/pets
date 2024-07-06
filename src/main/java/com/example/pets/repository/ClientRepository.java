@@ -9,7 +9,9 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.PagingAndSortingRepository;
 import org.springframework.data.repository.query.Param;
+import org.springframework.lang.NonNullApi;
 
+import javax.validation.constraints.NotNull;
 import java.util.List;
 
 public interface ClientRepository extends JpaRepository<Client, Long>, PagingAndSortingRepository<Client, Long> {
@@ -17,6 +19,7 @@ public interface ClientRepository extends JpaRepository<Client, Long>, PagingAnd
     @Query("SELECT c FROM Client c LEFT JOIN FETCH c.pet LEFT JOIN FETCH c.owner o WHERE o.id = :id")
     List<Client> findByIdOwner(@Param("id") Long id);
 
+    @Override
     @Query("SELECT c FROM Client c JOIN FETCH c.pet JOIN FETCH c.owner o")
     List<Client> findAll();
 
